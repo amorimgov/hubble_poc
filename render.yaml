@@ -1,0 +1,7 @@
+services:
+  - type: web
+    name: hubble
+    env: static
+    buildCommand: npm install && npm run build
+    staticPublishPath: build
+    plan: free
