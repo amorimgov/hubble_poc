@@ -1,7 +1,10 @@
 services:
   - type: web
     name: hubble
-    env: static
-    buildCommand: npm install && npm run build
-    staticPublishPath: build
+    env: node
+    buildCommand: npm install
+    startCommand: node server/index.js
     plan: free
+    envVars:
+      - key: NODE_VERSION
+        value: 20
