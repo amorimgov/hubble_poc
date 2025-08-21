@@ -1,9 +1,9 @@
-import { pgTable, text, serial, integer, boolean, timestamp, json, jsonb } from "drizzle-orm/pg-core";
+import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
-export const dataProducts = pgTable("data_products", {
-  id: serial("id").primaryKey(),
+export const dataProducts = sqliteTable("data_products", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
   name: text("name").notNull(),
   description: text("description").notNull(),
   type: text("type").notNull(), // dashboard_selfservice, api_outputs, insights, ai_agents, recommendation_system, genai_chat, genai_workflow, traditional_ai, genie_spaces
@@ -11,10 +11,10 @@ export const dataProducts = pgTable("data_products", {
   status: text("status").notNull(), // active, deprecated, development, experimentacao
   owner: text("owner").notNull(),
   ownerInitials: text("owner_initials").notNull(),
-  tags: text("tags").array().notNull().default([]),
-  metadata: json("metadata"), // type-specific metadata like columns, version, etc.
+  tags: text("tags").notNull().default("[]"), // JSON string for array
+  metadata: text("metadata"), // JSON string for type-specific metadata like columns, version, etc.
   contractSLA: text("contract_sla"),
-  qualityMetrics: json("quality_metrics"),
+  qualityMetrics: text("quality_metrics"), // JSON string
   // Enhanced fields
   technicalContact: text("technical_contact"),
   businessContact: text("business_contact"),
@@ -26,33 +26,33 @@ export const dataProducts = pgTable("data_products", {
   modelType: text("model_type"), // for AI products: LLM, traditional ML, recommendation engine, etc.
   confidenceLevel: text("confidence_level"), // high, medium, low
   complianceLevel: text("compliance_level"), // LGPD, SOX, PCI, etc.
-  upstreamSources: json("upstream_sources").$type<string[]>().default([]),
-  downstreamTargets: json("downstream_targets").$type<string[]>().default([]),
-  lastUpdated: timestamp("last_updated").defaultNow().notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
+  upstreamSources: text("upstream_sources").notNull().default("[]"), // JSON string for array
+  downstreamTargets: text("downstream_targets").notNull().default("[]"), // JSON string for array
+  lastUpdated: integer("last_updated", { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+  createdAt: integer("created_at", { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
 });
 
 // Lineage tracking
-export const dataLineage = pgTable("data_lineage", {
-  id: serial("id").primaryKey(),
-  productId: integer("product_id").references(() => dataProducts.id).notNull(),
+export const dataLineage = sqliteTable("data_lineage", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  productId: integer("product_id").notNull().references(() => dataProducts.id),
   sourceType: text("source_type").notNull(), // table, model, api, file
   sourceName: text("source_name").notNull(),
   sourceDescription: text("source_description"),
-  transformations: text("transformations").array().default([]),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
+  transformations: text("transformations").notNull().default("[]"), // JSON string for array
+  createdAt: integer("created_at", { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
 });
 
 // Product dependencies (tables/models)
-export const productDependencies = pgTable("product_dependencies", {
-  id: serial("id").primaryKey(),
-  productId: integer("product_id").references(() => dataProducts.id).notNull(),
+export const productDependencies = sqliteTable("product_dependencies", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  productId: integer("product_id").notNull().references(() => dataProducts.id),
   dependencyType: text("dependency_type").notNull(), // table, model, dataset
   dependencyName: text("dependency_name").notNull(),
   dependencySchema: text("dependency_schema"),
   description: text("description"),
-  isRequired: boolean("is_required").default(true),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
+  isRequired: integer("is_required", { mode: 'boolean' }).notNull().default(true),
+  createdAt: integer("created_at", { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
 });
 
 export const insertDataProductSchema = createInsertSchema(dataProducts).omit({
@@ -80,18 +80,18 @@ export const ProductDomain = z.enum(["sales", "marketing", "finance", "hr", "ope
 export const ProductStatus = z.enum(["active", "deprecated", "development", "experimentacao"]);
 
 // Approval System Schema
-export const approvalRequests = pgTable("approval_requests", {
-  id: serial("id").primaryKey(),
+export const approvalRequests = sqliteTable("approval_requests", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
   productId: integer("product_id").references(() => dataProducts.id),
   requestType: text("request_type").notNull(), // "create", "update", "delete"
   requestedBy: text("requested_by").notNull(),
-  requestedAt: timestamp("requested_at").defaultNow().notNull(),
+  requestedAt: integer("requested_at", { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
   status: text("status").notNull().default("pending"), // "pending", "approved", "rejected"
   approvedBy: text("approved_by"),
-  approvedAt: timestamp("approved_at"),
+  approvedAt: integer("approved_at", { mode: 'timestamp' }),
   rejectionReason: text("rejection_reason"),
-  proposedChanges: json("proposed_changes").notNull(),
-  currentData: json("current_data"),
+  proposedChanges: text("proposed_changes").notNull(), // JSON string
+  currentData: text("current_data"), // JSON string
 });
 
 export const insertApprovalRequestSchema = createInsertSchema(approvalRequests).omit({
@@ -122,11 +122,11 @@ export type InsertProductDependency = z.infer<typeof insertProductDependencySche
 export type ProductDependency = typeof productDependencies.$inferSelect;
 
 // User Favorites Table
-export const userFavorites = pgTable("user_favorites", {
-  id: serial("id").primaryKey(),
+export const userFavorites = sqliteTable("user_favorites", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
   userEmail: text("user_email").notNull(),
   productId: integer("product_id").notNull().references(() => dataProducts.id),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
+  createdAt: integer("created_at", { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
 });
 
 export const insertUserFavoriteSchema = createInsertSchema(userFavorites).omit({
@@ -138,8 +138,8 @@ export type InsertUserFavorite = z.infer<typeof insertUserFavoriteSchema>;
 export type UserFavorite = typeof userFavorites.$inferSelect;
 
 // Product Change Log
-export const productChanges = pgTable("product_changes", {
-  id: serial("id").primaryKey(),
+export const productChanges = sqliteTable("product_changes", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
   productId: integer("product_id").notNull().references(() => dataProducts.id),
   changedBy: text("changed_by").notNull(),
   changeType: text("change_type").notNull(), // created, updated, status_changed
@@ -147,7 +147,7 @@ export const productChanges = pgTable("product_changes", {
   oldValue: text("old_value"), // previous value
   newValue: text("new_value"), // new value
   description: text("description"), // human readable description
-  changedAt: timestamp("changed_at").defaultNow().notNull(),
+  changedAt: integer("changed_at", { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
 });
 
 export const insertProductChangeSchema = createInsertSchema(productChanges).omit({

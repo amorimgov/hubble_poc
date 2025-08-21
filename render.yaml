@@ -8,3 +8,16 @@ services:
     envVars:
       - key: NODE_VERSION
         value: 20
+      - key: DATABASE_URL
+        value: /data/sqlite/hubble.sqlite
+
+    mounts:
+      - type: volume
+        name: sqlite-data
+        mountPath: /data/sqlite
+        sizeGB: 1
+
+volumes:
+  - name: sqlite-data
+    region: oregon  # ou sua região
+    sizeGB: 1
