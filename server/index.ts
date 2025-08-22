@@ -50,7 +50,9 @@ app.use((req, res, next) => {
   // importantly only setup vite in development and after
   // setting up all the other routes so the catch-all route
   // doesn't interfere with the other routes
+  let host = "0.0.0.0";
   if (app.get("env") === "development") {
+    host = "localhost"
     await setupVite(app, server);
   } else {
     serveStatic(app);
@@ -60,7 +62,6 @@ app.use((req, res, next) => {
   // this serves both the API and the client.
   // It is the only port that is not firewalled.
   const port = 5000;
-  const host = process.env.NODE_ENV === "production" ? "0.0.0.0" : "localhost";
   server.listen(port, host, () => {
     log(`serving on ${host}:${port}`);
   });
